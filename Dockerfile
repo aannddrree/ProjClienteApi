@@ -1,19 +1,22 @@
-FROM mcr.microsoft.com/dotnet/aspnet:5.0-buster-slim AS base
+# Dockerfile
+
+FROM mcr.microsoft.com/dotnet/core/sdk:3.1 AS build-env
 WORKDIR /app
 
-FROM mcr.microsoft.com/dotnet/sdk:5.0-buster-slim AS build
-WORKDIR /src
+# Copy csproj and restore as distinct layers
+COPY *.csproj ./
+RUN dotnet restore
+
+# Copy everything else and build
 COPY . .
-RUN dotnet restore 
-RUN dotnet build --no-restore -c Release -o /app
+RUN dotnet publish -c Release -o out
 
-FROM build AS publish
-RUN dotnet publish --no-restore -c Release -o /app
-
-FROM base AS final
+# Build runtime image
+FROM mcr.microsoft.com/dotnet/core/aspnet:3.1
 WORKDIR /app
-COPY --from=publish /app .
-# Padrão de container ASP.NET
-# ENTRYPOINT ["dotnet", "CarterAPI.dll"]
-# Opção utilizada pelo Heroku
-CMD ASPNETCORE_URLS=http://*:$PORT dotnet CarterAPI.dll
+COPY --from=build-env /app/out .
+
+# Run the app on container startup
+# Use your project name for the second parameter
+# e.g. MyProject.dll
+ENTRYPOINT [ "dotnet", "HerokuApp.dll" ]
